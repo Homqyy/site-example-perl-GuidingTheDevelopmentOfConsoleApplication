@@ -294,6 +294,8 @@ sub cb_show_memory
 {
     my ($self, %args) = @_;
 
+    return (%args) if ($args{status} < 0)
+
     my $memory = `free -h`;
 
     print $memory;
@@ -304,6 +306,8 @@ sub cb_show_memory
 sub cb_show_disk
 {
     my ($self, %args) = @_;
+
+    return (%args) if ($args{status} < 0)
 
     my $disk = `df -h`;
 

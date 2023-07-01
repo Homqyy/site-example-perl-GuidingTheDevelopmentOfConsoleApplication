@@ -142,7 +142,7 @@ sub cb_ls
     my @arguments = @{$args{arguments}}; # 提取命令行参数
     my %options   = %{$args{options}};   # 提取命令行选项
 
-    my $path = $arguments[0] // '.';     # 提取路径参数，默认为当前目录
+    my $path = $arguments[0];
 
     my @files;
 
