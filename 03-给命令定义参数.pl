@@ -33,6 +33,26 @@ my $cli = Term::CLI->new(
             callback => sub { exit 0 },
         ),
         $cmd_help, # 引用 `help` 命令对象
+        Term::CLI::Command->new(
+            name        => 'ls',
+            description => '查看指定路径下的文件',
+            summary     => '查看指定路径下的文件',
+            usage       => "ls [OPTIONS] <PATH>\n".
+                           "\n".
+                           "PATH: 要查看的路径；默认为当前路径，即`.`\n".
+                           "\n".
+                           "OPTIONS:\n".
+                           "  -l   显示文件详细信息",
+            arguments   => [
+                Term::CLI::Argument::String->new(
+                    name        => 'path',
+                    min_length  => 1,
+                    max_length  => 128,
+                ),
+            ],
+            options     => [ "l" ],
+            callback    => \&cb_ls,
+        )
     ],
 );
 
@@ -42,6 +62,69 @@ $cli->read_history;  # 从文件 `~/.app_history` 读取历史记
 while ( my $input = $cli->readline(skip => qr/^\s*(?:#.*)?$/) )
 {
    $cli->execute_line($input);
+}
+
+sub cb_ls
+{
+    my ($self, %args) = @_;
+
+    my @arguments = @{$args{arguments}}; # 提取命令行参数
+    my %options   = %{$args{options}};   # 提取命令行选项
+
+    my $path = $arguments[0] // '.';     # 提取路径参数，默认为当前目录
+
+    my @files;
+
+    if (-d $path)
+    {
+        opendir(my $dh, $path) 
+            || return (%args, status => -1,  error => "无法打开目录：$!");
+
+        @files = readdir($dh);
+        closedir($dh);
+    }
+    elsif (-e $path)
+    {
+        my ($v, $d, $f) = File::Spec->splitpath($path);
+
+        $path = $d ||  '.'; # 如果没有目录，则默认为当前目录
+
+        push @files, $f;
+    }
+    else
+    {
+        return (%args, status => -1, error => "无效的路径：$path")
+    }
+
+    unless(exists $options{l})
+    {
+        # 如果没有输入 `-l` 参数，则只打印文件名
+
+        foreach my $file (@files)
+        {
+            next if ($file eq '.' || $file eq '..');
+
+            print "$file\n";
+        }
+    }
+    else
+    {
+        # 如果输入了 `-l` 参数，则打印文件详细信息
+
+        foreach my $file (@files)
+        {
+            next if ($file eq '.' || $file eq '..');
+
+            my $filepath = File::Spec->catfile($path, $file);
+            my @stat = stat($filepath);
+
+            printf "%-20s %10d %s\n", 
+                $file, $stat[7], scalar localtime($stat[9]);
+
+        }
+    }
+
+    return (%args, status => 0);
 }
 
 sub cb_help
